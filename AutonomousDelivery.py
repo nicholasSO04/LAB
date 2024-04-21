@@ -166,6 +166,7 @@ async def makeDelivery(robot):
 
     while not HAS_ARRIVED:
         while not HAS_REALIGNED:
+            realignRobot(robot)
             while not HAS_FOUND_OBSTACLE:
                 await moveTowardGoal(robot)
             while HAS_FOUND_OBSTACLE:

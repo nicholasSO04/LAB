@@ -177,7 +177,7 @@ def updateMazeCost(mazeDict, start, goal):
                 mazeDict[neighbor]['cost'] = current_cost + 1
                 queue.append(neighbor)
     return mazeDict
-#adding
+print(updateMazeCost({(0, 0): {'position': (0, 0), 'neighbors': [(0, 1)], 'visited': True, 'cost': 0}, (0, 1): {'position': (0, 1), 'neighbors': [(0, 0), (1, 1)], 'visited': False, 'cost': 0}, (1, 0): {'position': (1, 0), 'neighbors': [(1, 1)], 'visited': False, 'cost': 0}, (1, 1): {'position': (1, 1), 'neighbors': [(1, 0), (0, 1)], 'visited': True, 'cost': 0}}, (0, 0), (1, 0)))
 
 def checkCellArrived(currcell, destination):
     if currcell == destination:

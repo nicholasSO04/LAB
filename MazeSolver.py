@@ -21,7 +21,7 @@ PREV_CELL = None
 START = (0,1)
 CURR_CELL = START
 DESTINATION = (1,0)
-MAZE_DICT[CURR_CELL]["visited"] = True
+
 
 
 # === PROXIMITY TOLERANCES
@@ -43,36 +43,113 @@ async def when_either_bumped(robot):
 # ==========================================================
 # Helper Functions
 
-def createMazeDict(nXCells, nYCells, cellDim):
+def createMazeDict(i, j, size):
+    dict1 = {}
+    for x in range(i):
+        for y in range(j):
+            dict1[(x,y)] = {'position' : (x * size, y * size), 'neighbors': [], 'visited': False, 'cost': 0}
+    return dict1
+
+def addAllNeighbors(mazedict):
+    for key in mazedict:
+        x, y = key
+        if (x-1, y) in mazedict:
+            mazedict[key]['neighbors'] += [(x-1, y)]
+        if (x, y+1) in mazedict:
+            mazedict[key]['neighbors'] += [(x, y+1)]
+        if (x+1, y) in mazedict:
+            mazedict[key]['neighbors'] += [(x+1, y)]
+        if (x, y-1) in mazedict:
+            mazedict[key]['neighbors'] += [(x, y-1)]
+        
+    return mazedict
+
+def getRobotOrientation(heading):
+    heading = heading % 360
+    if heading >= 225 and heading < 315:
+        return 'S'
+    if heading >= 315 and heading < 360 or heading < 45:
+        return 'E'
+    if heading >= 45 and heading < 135:
+        return 'N'
+    if heading >= 135 and heading < 225:
+        return 'W'
     
-    pass
 
-def addAllNeighbors():
-    pass
+def getPotentialNeighbors(currcell, orientation):
+    x,y = currcell
+    if orientation == "N":
+        potentialNeighbors = [(x-1, y),(x, y + 1 ),(x+1, y),(x, y -1)]
+    if orientation == "S":
+        potentialNeighbors = [(x + 1, y),(x, y -1),(x-1, y),(x, y + 1)]
+    if orientation == "E":
+        potentialNeighbors = [(x, y + 1),(x+1, y),(x, y -1),(x-1, y)]
+    if orientation == "W":
+        potentialNeighbors = [(x, y -1),(x-1, y),(x, y + 1),(x + 1, y)]
+    return potentialNeighbors
 
-def getRobotOrientation():
-    pass
+def isValidCell(indices, xmax, ymax):
+    x, y = indices
+    if x < xmax and x > 0 and y > 0 and y < ymax:
+        return True
+    else:
+        return False
 
-def getPotentialNeighbors():
-    pass
+def getWallConfiguration(lsen, fsen, rsen, threshold):
+    left = False
+    front = False
+    right = False
+    ldis = 4095 / (lsen + 1)
+    fdis = 4095 / (fsen + 1)
+    rdis = 4095 / (rsen + 1)
+    if ldis < threshold:
+        left = True
+    if fdis < threshold:
+        front = True
+    if rdis < threshold:
+        right = True
+    return [left, front, right]
 
-def isValidCell():
-    pass
+def getNavigableNeighbors(walls, neighbors, prev, xmax, ymax):
+    navneighbor = []
+    for index, pos in enumerate(neighbors):
+        if index < 3:
+            if not walls[index]:
+                if isValidCell(pos, xmax, ymax):
+                    navneighbor.append(pos)
+        else:
+            if pos == prev:
+                navneighbor.insert(0,pos)
+    return navneighbor
 
-def getWallConfiguration():
-    pass
-
-def getNavigableNeighbors():
-    pass
-
-def updateMazeNeighbors():
-    pass
+def updateMazeNeighbors(mazedict, currcell, navneighbors):
+    mazedict[currcell]['neighbors'] = navneighbors
+    for key in mazedict:
+        if currcell in mazedict[key]['neighbors']:
+            if currcell not in navneighbors:
+                mazedict[key]['neighbors'].remove(currcell)
+    return mazedict
     
-def getNextCell():
-    pass
+def getNextCell(mazedict, currcell):
+    mincost = 1000000
+    nextmove = None
+    for pos in mazedict[currcell]['neighbors']:
+        if mazedict[pos]['cost'] < mincost and not mazedict[pos]['visited']:
+            mincost = mazedict[pos]['cost']
+            nextmove = pos
+    if nextmove == None:
+        for pos in mazedict[currcell]['neighbors']:
+            if mazedict[pos]['cost'] < mincost and not mazedict[pos]['visited']:
+                mincost = mazedict[pos]['cost']
+                nextmove = pos
+    return nextmove
 
-def checkCellArrived():
-    pass
+def checkCellArrived(currcell, destination):
+    if currcell == destination:
+        return True
+    else:
+        return False
+    
 
 def printMazeGrid(mazeDict, nXCells, nYCells, attribute):
     for y in range(nYCells - 1, -1, -1):
@@ -107,20 +184,85 @@ def updateMazeCost(mazeDict, start, goal):
 MAZE_DICT = createMazeDict(N_X_CELLS, N_Y_CELLS, CELL_DIM)
 MAZE_DICT = addAllNeighbors(MAZE_DICT, N_X_CELLS, N_Y_CELLS)
 
+
+MAZE_DICT[CURR_CELL]["visited"] = True
 # ==========================================================
 # EXPLORATION AND NAVIGATION
 
 # === EXPLORE MAZE
-async def navigateToNextCell():
+async def navigateToNextCell(robot, nextcell, orientation):
     global MAZE_DICT, PREV_CELL, CURR_CELL, CELL_DIM
-    pass
+    # get the orientation of the cells given the current heading of the object
+    # check which direction there are walls in
+    # check for the cell with the lowest cost and which was not visited, find the change of angle necessary (90degrees right, 90degrees left, 180degrees)
+    # set robot movement to equal to one cell dimension
+
+    # getRobotOrientation()
+    # getPotentialNeighbors()
+    # isValidCell() # check if the neighbor is within the bounds of the region
+    # getWallConfiguration() # check in which direction there are walls in
+    # getNavigableNeighbors() # based on the location of walls, the whether the cell is within the bounds
+    # updateMazeCost() # function for updating the cost of going to each cell
+    # updateMazeNeighbors() # this function updates the neighbors the robot can navigate to in the dictionary
+    # getNextMove() # implement this function to get the next best possible cell
+    # fucntion to get angle:
+    angle = 0
+    direc = 0
+    orient = 0
+    x1, y1 = CURR_CELL
+    x2, y2 = nextcell
+    if x2 - x1 != 0:
+        if x2-x1 >0:
+            direc = 0 #right
+        else:
+            direc = -180 #left
+    if y2-y1 != 0:
+        if y2-y1 >0:
+            direc = -90 #up
+        else:
+            direc = -270 #down
+    if orientation == "N":
+        orient = 90
+    elif orientation == "E":
+        orient = 0
+    elif orientation == "S":
+        orient = 270
+    else:
+        orient = 180
+        
+    angle = orient + direc
+    CURR_CELL = nextcell
+    await robot.turn_right(angle)
+
+    await robot.move(CELL_DIM)
+
 
 @event(robot.when_play)
 async def navigateMaze():
     global HAS_COLLIDED, HAS_ARRIVED
     global PREV_CELL, CURR_CELL, START, DESTINATION
     global MAZE_DICT, N_X_CELLS, N_Y_CELLS, CELL_DIM, WALL_THRESHOLD
-    pass
+    while not (HAS_ARRIVED or HAS_COLLIDED):
+        #GET READINGS
+        current_position = await robot.get_position()
+        heading = current_position.heading
+        orient = getRobotOrientation(heading)
+        potneighbors = getPotentialNeighbors(CURR_CELL, orient)
+        readings = (await robot.get_ir_proximity()).sensors
+        lsen, fsen, rsen = readings[0], readings[3], readings[6]
+        walls = getWallConfiguration(lsen, fsen, rsen, WALL_THRESHOLD)
+        navigable = getNavigableNeighbors(walls, potneighbors, PREV_CELL, N_X_CELLS, N_Y_CELLS)
+
+        #UPDATE MAZE DICT
+        MAZE_DICT = updateMazeNeighbors(MAZE_DICT, CURR_CELL, navigable)
+        MAZE_DICT = updateMazeCost(MAZE_DICT, CURR_CELL, DESTINATION)
+        #MOVE TO NEXT CELL
+        next = getNextCell(MAZE_DICT, CURR_CELL)
+        navigateToNextCell(robot, next, orient)
+
+        if checkCellArrived(CURR_CELL, DESTINATION):
+            HAS_ARRIVED = True
+
 
 
 robot.play()
