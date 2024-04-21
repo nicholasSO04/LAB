@@ -7,7 +7,8 @@ from irobot_edu_sdk.music import Note
 import math as m
 from math import sqrt
 # robot is the instance of the robot that will allow us to call its methods and to define events with the @event decorator.
-robot = Create3(Bluetooth())  # Will connect to the first robot found.
+name = ""
+robot = Create3(Bluetooth(name))  # Will connect to the first robot found.
 
 
 HAS_COLLIDED = False
@@ -18,23 +19,28 @@ HAS_ARRIVED = False
 DESTINATION = (0, 120)
 ARRIVAL_THRESHOLD = 5
 IR_ANGLES = [-65.3, -38.0, -20.0, -3.0, 14.25, 34.0, 65.3]
+ROTATION_DIR = 0
+SPEED = 5
 
 # Implementation for fail-safe robots
 # EITHER BUTTON
 @event(robot.when_touched, [True, True])  # User buttons: [(.), (..)]
-async def when_either_button_touched(robot):
-    pass
+async def when_either_touched(robot):
+    global HAS_COLLIDED
+    HAS_COLLIDED = True
+    
 
 # EITHER BUMPER
 @event(robot.when_bumped, [True, True])  # [left, right]
 async def when_either_bumped(robot):
-    pass
+    global HAS_COLLIDED
+    HAS_COLLIDED = True
 
 # ==========================================================
 
 # Helper Functions
 def getMinProxApproachAngle(readingsList):
-    IR_ANGLES = [-65.3, -38.0, -20.0, -3.0, 14.25, 34.0, 65.3]
+    global IR_ANGLES
     max = 0 
     closest = 0
     for index, i in enumerate(readingsList):
@@ -77,25 +83,76 @@ def checkPositionArrived(currentPosition, destination, threshold):
         return True
     else:
         return False
+    
+def movementDirection(readings):
+    max = 0
+    sensorIndex = -1
+    direc = "clockwise"
+    for i in range(len(readings)):
+        if readings[i] >= 20:
+            if readings[i] > max:
+                max = readings[i]
+                sensorIndex = i
+    if sensorIndex in [0, 1, 2]: 
+        direc = "clockwise"                            
+            
+    elif sensorIndex in [4,5,6]:  
+        direc = "counterclockwise" 
+    return direc   
 
 # === REALIGNMENT BEHAVIOR
 async def realignRobot(robot):
-    headings = [] # add headings to thing
+    global HAS_REALIGNED
+    headings = (await robot.get_ir_proximity()).sensors
     theta = getCorrectionAngle(headings)
-    robot.turn_right(theta)
-    destAngle = getAngleToDestination()
-    robot.turn_right(destAngle)
+    destAngle = getAngleToDestination(theta)
+    await robot.turn_right(destAngle)
+    HAS_REALIGNED = True
+
     
 
 # === MOVE TO GOAL
 async def moveTowardGoal(robot):
-    while HAS_FOUND_OBSTACLE == False:
-        robot.set_wheel_speeds(5,5) # must define this function properly
+    global HAS_FOUND_OBSTACLE, SENSOR2CHECK, SPEED, HAS_REALIGNED
+    robot.set_wheel_speeds(SPEED, SPEED)
+    readings = (await robot.get_ir_proximity()).sensors
+    dist, angle =  getMinProxApproachAngle(readings)
+    if dist < 20:
+        await robot.set_wheel_speeds(0,0)
+        await robot.turn_right(angle)
+        HAS_FOUND_OBSTACLE = True
+        HAS_REALIGNED = False
+        ROTATION_DIR = movementDirection(readings)
+        if ROTATION_DIR == "clockwise":
+            SENSOR2CHECK = 0
+        else:
+            SENSOR2CHECK = 6
 
 
 # === FOLLOW OBSTACLE
-async def followObstacle():
-    pass
+async def followObstacle(robot):
+    global ROTATION_DIR, SPEED, HAS_FOUND_OBSTACLE, HAS_REALIGNED
+    await robot.set_wheel_speeds(SPEED,SPEED)
+    readings = (await robot.get_ir_proximity()).sensors
+    sidesens = readings[SENSOR2CHECK]
+    sidedist = 4095 / (sidesens + 1)
+    if sidedist > 100:
+        HAS_FOUND_OBSTACLE = False
+        HAS_REALIGNED = False
+        await robot.move(5) # figure out this distance
+    elif sidedist <= 5 or sidedist > 10:
+        await robot.set_wheel_speeds(0,0)
+        if ROTATION_DIR == "clockwise":
+            if sidedist <= 5:
+                await robot.turn_right(3)
+            if sidedist > 10:
+                await robot.turn_left(3)
+        else:
+            if sidedist <= 5:
+                await robot.turn_left(3)
+            if sidedist > 10:
+                await robot.turn_right(3)
+        await robot.set_wheel_speeds(SPEED, SPEED)
 
 # ==========================================================
 
@@ -103,7 +160,21 @@ async def followObstacle():
 
 @event(robot.when_play)
 async def makeDelivery(robot):
-    pass
+    global ROTATION_DIR, SPEED, HAS_FOUND_OBSTACLE, SENSOR2CHECK
+    global HAS_ARRIVED, HAS_COLLIDED, HAS_REALIGNED
+    global DESTINATION
+
+    while not HAS_ARRIVED:
+        while not HAS_REALIGNED:
+            while not HAS_FOUND_OBSTACLE:
+                await moveTowardGoal(robot)
+            while HAS_FOUND_OBSTACLE:
+                await followObstacle(robot)
+
+        current_position = await robot.get_position()
+        pos = current_position.x, current_position.y
+        if checkPositionArrived(pos, DESTINATION, ARRIVAL_THRESHOLD):
+            HAS_ARRIVED = True
 
 
 # start the robot
