@@ -43,7 +43,8 @@ async def when_either_bumped(robot):
 # ==========================================================
 # Helper Functions
 
-def createMazeDict():
+def createMazeDict(nXCells, nYCells, cellDim):
+    
     pass
 
 def addAllNeighbors():
