@@ -34,42 +34,54 @@ async def when_either_bumped(robot):
 
 # Helper Functions
 def getMinProxApproachAngle(readingsList):
-    minDist = 10000000000
-    angleInd = 0
-    for num in range(len(readingsList)):
-        if readingsList[num] < minDist:
-            minDist = readingsList[num]
-            angleInd = num
-    return (minDist, IR_READINGS[num])
-    pass
+    IR_ANGLES = [-65.3, -38.0, -20.0, -3.0, 14.25, 34.0, 65.3]
+    max = 0 
+    closest = 0
+    for index, i in enumerate(readingsList):
+        if i > max:
+            max = i
+            closest = IR_ANGLES[index]
+    max = 4095 / (max + 1)
+    max = round(max, 3)
+    return max, closest
 
 def getCorrectionAngle(heading):
-    if heading != 90:
-        correctingAngle = int(heading - 90)
-    pass
+    correction = 90
+    if heading < 0:
+        correction = 90 - heading
+        if heading < -90:
+            correction -= 360
+    elif correction > 0:
+        correction = 90 - heading
+    return int(-1 * correction)
 
 
 def getAngleToDestination(currentPosition, destination):
-    xDist = destination[0] - currentPosition[0]
-    yDist = destination[1] - currentPosition[1]
-    angle = m.arctan(yDist/xDist) # is the value returned in degrees or radians
-    correctAngle = 90-angle
-    return correctAngle
-    pass
+    currx, curry = currentPosition
+    destx, desty = destination
+    xDist = destx - currx
+    yDist = desty - curry
+    angle = m.atan(xDist/yDist) # is the value returned in degrees or radians
+    correctAngle = m.degrees(angle)
+    if xDist > 0 and yDist < 0:
+        correctAngle += 180
+    elif xDist < 0 and yDist < 0:
+        correctAngle -= 180
+    return int(correctAngle)
 
 def checkPositionArrived(currentPosition, destination, threshold):
-    xDist = destination[0] - currentPosition[0]
-    yDist = destination[1] - currentPosition[1]
-    distanceDest = sqrt((xDist)**2+(yDist)**2)
-    if distanceDest < threshold:
+    x1, y1 = currentPosition
+    x2, y2 = destination
+    distance = m.sqrt(m.fabs((x2 - x1)**2  + (y2 - y1)**2))
+    if distance <= threshold:
         return True
     else:
         return False
-    pass
 
 # === REALIGNMENT BEHAVIOR
 async def realignRobot(robot):
-    theta = getCorrectionAngle()
+    headings = [] # add headings to thing
+    theta = getCorrectionAngle(headings)
     robot.turn_right(theta)
     destAngle = getAngleToDestination()
     robot.turn_right(destAngle)
