@@ -44,16 +44,30 @@ def checkPositionArrived():
     pass
 
 # === REALIGNMENT BEHAVIOR
-async def realignRobot():
-    pass
-
-# === MOVE TO GOAL
-async def moveTowardGoal():
+async def moveTowardGoal(robot):
+    global HAS_FOUND_OBSTACLE
+    global SENSOR2CHECK
+    while HAS_FOUND_OBSTACLE == False:
+        robot.set_wheel_speeds(5,5)
+        getMinProxApproachAngle()
+        if minDist < 20:
+            HAS_FOUND_OBSTACLE == True
+    if angle > 0:
+        SENSOR2CHECK == 6
+        robot.turn_left(90-angle)
+    else:
+        SENSOR2CHECK == 0
+        robot.turn_right(90+angle)
+         
     pass
 
 # === FOLLOW OBSTACLE
-async def followObstacle():
-    pass
+async def followObstacle(robot):
+    robot.set_wheel_speeds(5,5)
+    # apply the same code as that from lab 02 to check distance from walls and constantly adjust
+    # if the distance from the SENSOR2CHECK angle is > 100 then it means it has already passed the obstacle
+    robot move a small distance of 10 to go past the obstacke completely
+    realignRobot()
 
 # ==========================================================
 
