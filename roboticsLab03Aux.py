@@ -15,6 +15,7 @@ def getMinProxApproachAngle(readingsList):
     max = round(max, 3)
     return max, closest
 
+
 def getCorrectionAngle(heading):
     correction = 90
     if heading < 0:
@@ -48,7 +49,7 @@ def getAngleToDestination(currentPosition, destination):
         correctAngle -= 180
     return int(correctAngle)
 
-print(getAngleToDestination((0,0), (-1,0)))
+#print(getAngleToDestination((0,0), (-1,0)))
 
 
 def checkPositionArrived(currentPosition, destination, threshold):
@@ -108,11 +109,11 @@ def getPotentialNeighbors(currcell, orientation):
 
 def isValidCell(indices, xmax, ymax):
     x, y = indices
-    if x < xmax and x > 0 and y > 0 and y < ymax:
+    if x < xmax and x >= 0 and y >= 0 and y < ymax:
         return True
     else:
         return False
-
+print(isValidCell((0,2), 3, 3))
 def getWallConfiguration(lsen, fsen, rsen, threshold):
     left = False
     front = False
@@ -166,6 +167,8 @@ def getNextCell(mazedict, currcell):
                 mincost = mazedict[pos]['cost']
                 nextmove = pos
     return nextmove
+
+#print(getNextCell({(0, 0): {'position': (0, 0), 'neighbors': [(1, 0)], 'visited': False, 'cost': 1, 'flooded': True}, (0, 1): {'position': (0, 50), 'neighbors': [], 'visited': True, 'cost': 0, 'flooded': False}, (0, 2): {'position': (0, 100), 'neighbors': [(1, 2)], 'visited': False, 'cost': 3, 'flooded': True}, (1, 0): {'position': (50, 0), 'neighbors': [(0, 0), (1, 1), (2, 0)], 'visited': False, 'cost': 0, 'flooded': True}, (1, 1): {'position': (50, 50), 'neighbors': [(1, 2), (2, 1), (1, 0)], 'visited': False, 'cost': 1, 'flooded': True}, (1, 2): {'position': (50, 100), 'neighbors': [(0, 2), (2, 2), (1, 1)], 'visited': False, 'cost': 2, 'flooded': True}, (2, 0): {'position': (100, 0), 'neighbors': [(1, 0), (2, 1)], 'visited': False, 'cost': 1, 'flooded': True}, (2, 1): {'position': (100, 50), 'neighbors': [(1, 1), (2, 2), (2, 0)], 'visited': False, 'cost': 2, 'flooded': True}, (2, 2): {'position': (100, 100), 'neighbors': [(1, 2), (2, 1)], 'visited': False, 'cost': 3, 'flooded': True}}, (0, 1)))
 
 def updateMazeCost(mazeDict, start, goal):
     for (i,j) in mazeDict.keys():

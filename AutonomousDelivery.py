@@ -16,7 +16,7 @@ HAS_REALIGNED = False
 HAS_FOUND_OBSTACLE = False
 SENSOR2CHECK = 0
 HAS_ARRIVED = False
-DESTINATION = (-50, 100)
+DESTINATION = (50, 100)
 ARRIVAL_THRESHOLD = 5
 IR_ANGLES = [-65.3, -38.0, -20.0, -3.0, 14.25, 34.0, 65.3]
 ROTATION_DIR = 0
@@ -44,7 +44,7 @@ async def when_either_bumped(robot):
 
 # Helper Functions
 def getMinProxApproachAngle(readingsList):
-    global IR_ANGLES
+    IR_ANGLES = [-65.3, -38.0, -20.0, -3.0, 14.25, 34.0, 65.3]
     max = 0 
     closest = 0
     for index, i in enumerate(readingsList):
@@ -147,15 +147,18 @@ async def moveTowardGoal(robot):
         print('obstacle detected')
         await robot.set_wheel_speeds(0,0)
         HAS_FOUND_OBSTACLE = True
+        readings = (await robot.get_ir_proximity()).sensors
+        dist, angle =  getMinProxApproachAngle(readings)
+        print(angle)
         ROTATION_DIR = movementDirection(readings)
         if ROTATION_DIR == "clockwise":
             SENSOR2CHECK = 0
         else:
             SENSOR2CHECK = 6
         if ROTATION_DIR == 'clockwise':
-            await robot.turn_left(angle )
+            await robot.turn_right(90 + angle)
         else:
-            await robot.turn_right(angle)
+            await robot.turn_left(90 - angle)
 
 
 # === FOLLOW OBSTACLE
@@ -173,7 +176,7 @@ async def followObstacle(robot):
     if sidedist > 100:
         HAS_FOUND_OBSTACLE = False
         HAS_REALIGNED = False
-        await robot.move(16) # figure out this distance
+        await robot.move(30) # figure out this distance
     elif sidedist <= 5 or sidedist > 10:
         await robot.set_wheel_speeds(0,0)
         if ROTATION_DIR == "clockwise":
