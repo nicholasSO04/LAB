@@ -16,7 +16,7 @@ HAS_REALIGNED = False
 HAS_FOUND_OBSTACLE = False
 SENSOR2CHECK = 0
 HAS_ARRIVED = False
-DESTINATION = (50, 100)
+DESTINATION = (200, -400)
 ARRIVAL_THRESHOLD = 5
 IR_ANGLES = [-65.3, -38.0, -20.0, -3.0, 14.25, 34.0, 65.3]
 ROTATION_DIR = 0
@@ -202,7 +202,6 @@ async def makeDelivery(robot):
     global DESTINATION
 
     while not HAS_ARRIVED and not HAS_COLLIDED:
-        print('hi')
         await realignRobot(robot)
         while HAS_REALIGNED and not HAS_COLLIDED:
             

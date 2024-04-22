@@ -4,7 +4,7 @@ from irobot_edu_sdk.music import Note
 from collections import deque
 
 # robot is the instance of the robot that will allow us to call its methods and to define events with the @event decorator.
-name = 'EVE'
+name = 'MARVIN'
 robot = Create3(Bluetooth(name))  # Will connect to the first robot found.
 
 # === FLAG VARIABLES
@@ -19,14 +19,14 @@ CELL_DIM = 50
 
 # === DEFINING ORIGIN AND DESTINATION
 PREV_CELL = None
-START = (0,1)
+START = (0,0)
 CURR_CELL = START
-DESTINATION = (1,0)
+DESTINATION = (0,2)
 
 
 
 # === PROXIMITY TOLERANCES
-WALL_THRESHOLD = 80
+WALL_THRESHOLD = 90
 
 # ==========================================================
 # FAIL SAFE MECHANISMS
@@ -34,12 +34,14 @@ WALL_THRESHOLD = 80
 # EITHER BUTTON
 @event(robot.when_touched, [True, True])  # User buttons: [(.), (..)]
 async def when_either_button_touched(robot):
-    pass
+    global HAS_COLLIDED
+    HAS_COLLIDED = True
 
 # EITHER BUMPER
 @event(robot.when_bumped, [True, True])  # [left, right]
 async def when_either_bumped(robot):
-    pass
+    global HAS_COLLIDED
+    HAS_COLLIDED = True
 
 # ==========================================================
 # Helper Functions
@@ -103,34 +105,41 @@ def getWallConfiguration(lsen, fsen, rsen, threshold):
     ldis = 4095 / (lsen + 1)
     fdis = 4095 / (fsen + 1)
     rdis = 4095 / (rsen + 1)
-    if ldis < threshold:
+    if ldis <= threshold:
         left = True
-    if fdis < threshold:
+    if fdis <= threshold:
         front = True
-    if rdis < threshold:
+    if rdis <= threshold:
         right = True
     return [left, front, right]
 
 def getNavigableNeighbors(walls, neighbors, prev, xmax, ymax):
     navneighbor = []
-    for index, pos in enumerate(neighbors):
-        try:
-            if not walls[index]: 
-                print(pos)
-                if isValidCell(pos, xmax, ymax): 
-                    print
-                    navneighbor.append(pos)
-        except:
-            if pos == prev:
-                navneighbor.insert(0,pos)
+    # for index, pos in enumerate(neighbors):
+    #     if pos == prev:
+    #         navneighbor.append(pos)
+    #     try:
+    #         if not walls[index]: 
+    #             if isValidCell(pos, xmax, ymax): 
+    #                 navneighbor.append(pos)
+            
+    #     except:
+    #         pass
+    if prev:
+        navneighbor.append(prev)
+    for index, wall in enumerate(walls):
+        if not wall:
+            if isValidCell(neighbors[index], xmax, ymax): 
+                    navneighbor.append(neighbors[index])
+
     return navneighbor
 
 def updateMazeNeighbors(mazedict, currcell, navneighbors):
-    mazedict[currcell]['neighbors'] = navneighbors
     for key in mazedict:
         if currcell in mazedict[key]['neighbors']:
-            if currcell not in navneighbors:
+            if key not in navneighbors:
                 mazedict[key]['neighbors'].remove(currcell)
+    mazedict[currcell]['neighbors'] = navneighbors
     return mazedict
     
 def getNextCell(mazedict, currcell):
@@ -142,7 +151,7 @@ def getNextCell(mazedict, currcell):
             nextmove = pos
     if nextmove == None:
         for pos in mazedict[currcell]['neighbors']:
-            if mazedict[pos]['cost'] < mincost and not mazedict[pos]['visited']:
+            if mazedict[pos]['cost'] < mincost:
                 mincost = mazedict[pos]['cost']
                 nextmove = pos
     return nextmove
@@ -234,7 +243,11 @@ async def navigateToNextCell(robot, nextcell, orientation):
         orient = 180
         
     angle = orient + direc
+    PREV_CELL = CURR_CELL
+    
     CURR_CELL = nextcell
+    MAZE_DICT[CURR_CELL]['visted'] = True
+    
     await robot.turn_right(angle)
 
     await robot.move(CELL_DIM)
@@ -254,20 +267,30 @@ async def navigateMaze(robot):
         readings = (await robot.get_ir_proximity()).sensors
         lsen, fsen, rsen = readings[0], readings[3], readings[6]
         walls = getWallConfiguration(lsen, fsen, rsen, WALL_THRESHOLD)
+        print(walls)
         navigable = getNavigableNeighbors(walls, potneighbors, PREV_CELL, N_X_CELLS, N_Y_CELLS)
         
         #UPDATE MAZE DICT
+        
         MAZE_DICT = updateMazeNeighbors(MAZE_DICT, CURR_CELL, navigable)
-        MAZE_DICT = updateMazeCost(MAZE_DICT, CURR_CELL, DESTINATION)
-        print(walls)
+        MAZE_DICT = updateMazeCost(MAZE_DICT, START, DESTINATION)
+        
         #MOVE TO NEXT CELL
         
         next = getNextCell(MAZE_DICT, CURR_CELL)
         print(next)
+        if next == (1,2):
+            print(MAZE_DICT)
         await navigateToNextCell(robot, next, orient)
 
         if checkCellArrived(CURR_CELL, DESTINATION):
             HAS_ARRIVED = True
+            print('arrived')
+            await robot.set_wheel_speeds(0,0)
+            await robot.set_lights_rgb(0, 255 ,0)
+        if HAS_COLLIDED:
+            await robot.set_wheel_speeds(0,0)
+            await robot.set_lights_rgb(255,0,0)
 
 
 
