@@ -215,7 +215,7 @@ async def makeDelivery(robot):
         if checkPositionArrived(pos, DESTINATION, ARRIVAL_THRESHOLD):
             HAS_ARRIVED = True
             await robot.set_wheel_speeds(0,0)
-            await robot.set_lights_rgb(0,255,0)
+            await robot.set_lights_spin_rgb(0, 255,0)
             print('arrived')
 
 
