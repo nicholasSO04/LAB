@@ -25,23 +25,31 @@ def getCorrectionAngle(heading):
         correction = 90 - heading
     return int(-1 * correction)
 
-
+#print(getCorrectionAngle(135))
 
 def getAngleToDestination(currentPosition, destination):
     currx, curry = currentPosition
     destx, desty = destination
     xDist = destx - currx
     yDist = desty - curry
-    angle = m.atan(xDist/yDist) # is the value returned in degrees or radians
+    try:
+        angle = m.atan(xDist/yDist) # is the value returned in degrees or radians
+    except:
+        if xDist > 0:
+            angle = (-m.pi/2)
+        else:
+            angle = (-(m.pi/2))
     correctAngle = m.degrees(angle)
-    if xDist > 0 and yDist < 0:
+    if xDist >= 0 and yDist <= 0:
+        
         correctAngle += 180
     elif xDist < 0 and yDist < 0:
+        
         correctAngle -= 180
     return int(correctAngle)
 
+print(getAngleToDestination((0,0), (-1,0)))
 
-print(getAngleToDestination((1, 1), (5, 3)))
 
 def checkPositionArrived(currentPosition, destination, threshold):
     x1, y1 = currentPosition
@@ -177,7 +185,7 @@ def updateMazeCost(mazeDict, start, goal):
                 mazeDict[neighbor]['cost'] = current_cost + 1
                 queue.append(neighbor)
     return mazeDict
-print(updateMazeCost({(0, 0): {'position': (0, 0), 'neighbors': [(0, 1)], 'visited': True, 'cost': 0}, (0, 1): {'position': (0, 1), 'neighbors': [(0, 0), (1, 1)], 'visited': False, 'cost': 0}, (1, 0): {'position': (1, 0), 'neighbors': [(1, 1)], 'visited': False, 'cost': 0}, (1, 1): {'position': (1, 1), 'neighbors': [(1, 0), (0, 1)], 'visited': True, 'cost': 0}}, (0, 0), (1, 0)))
+#print(updateMazeCost({(0, 0): {'position': (0, 0), 'neighbors': [(0, 1)], 'visited': True, 'cost': 0}, (0, 1): {'position': (0, 1), 'neighbors': [(0, 0), (1, 1)], 'visited': False, 'cost': 0}, (1, 0): {'position': (1, 0), 'neighbors': [(1, 1)], 'visited': False, 'cost': 0}, (1, 1): {'position': (1, 1), 'neighbors': [(1, 0), (0, 1)], 'visited': True, 'cost': 0}}, (0, 0), (1, 0)))
 
 def checkCellArrived(currcell, destination):
     if currcell == destination:

@@ -16,7 +16,7 @@ HAS_REALIGNED = False
 HAS_FOUND_OBSTACLE = False
 SENSOR2CHECK = 0
 HAS_ARRIVED = False
-DESTINATION = (0, 20)
+DESTINATION = (-50, 100)
 ARRIVAL_THRESHOLD = 5
 IR_ANGLES = [-65.3, -38.0, -20.0, -3.0, 14.25, 34.0, 65.3]
 ROTATION_DIR = 0
@@ -71,9 +71,15 @@ def getAngleToDestination(currentPosition, destination):
     destx, desty = destination
     xDist = destx - currx
     yDist = desty - curry
-    angle = m.atan(xDist/yDist) # is the value returned in degrees or radians
+    try:
+        angle = m.atan(xDist/yDist) # is the value returned in degrees or radians
+    except:
+        if xDist > 0:
+            angle = (-m.pi/2)
+        else:
+            angle = (-(m.pi/2))
     correctAngle = m.degrees(angle)
-    if xDist > 0 and yDist < 0:
+    if xDist >= 0 and yDist <= 0:
         correctAngle += 180
     elif xDist < 0 and yDist < 0:
         correctAngle -= 180
@@ -106,25 +112,26 @@ def movementDirection(readings):
 
 # === REALIGNMENT BEHAVIOR
 async def realignRobot(robot):
-    
     global HAS_REALIGNED, DESTINATION
+    print('realigning')
     await robot.set_wheel_speeds(0,0)
     current_position = await robot.get_position()
     headings = current_position.heading
     pos = current_position.x, current_position.y
     theta = getCorrectionAngle(headings)
-    await robot.turn_right(theta)
+    print(theta)
     destAngle = getAngleToDestination(pos, DESTINATION)
-    print(theta, destAngle)
-    await robot.turn_right(destAngle)
-    HAS_REALIGNED = True
+    print(destAngle)
+    angle  = theta + destAngle
+    await robot.turn_right(angle)
     await robot.set_wheel_speeds(SPEED, SPEED)
+    HAS_REALIGNED = True
 
     
 
 # === MOVE TO GOAL
 async def moveTowardGoal(robot):
-    global HAS_FOUND_OBSTACLE, SENSOR2CHECK, SPEED, HAS_REALIGNED, HAS_ARRIVED
+    global HAS_FOUND_OBSTACLE, SENSOR2CHECK, SPEED, HAS_REALIGNED, HAS_ARRIVED, ROTATION_DIR
     await robot.set_wheel_speeds(SPEED, SPEED)
     readings = (await robot.get_ir_proximity()).sensors
     dist, angle =  getMinProxApproachAngle(readings)
@@ -132,31 +139,41 @@ async def moveTowardGoal(robot):
     pos = current_position.x, current_position.y
     if checkPositionArrived(pos, DESTINATION, ARRIVAL_THRESHOLD):
             HAS_ARRIVED = True
+            await robot.set_wheel_speeds(0,0)
+            await robot.set_lights_rgb(0,255,0)
             print('arrived')
     print(current_position.x, current_position.y)
     if dist < 20:
+        print('obstacle detected')
         await robot.set_wheel_speeds(0,0)
-        await robot.turn_right(angle)
         HAS_FOUND_OBSTACLE = True
-        HAS_REALIGNED = False
         ROTATION_DIR = movementDirection(readings)
         if ROTATION_DIR == "clockwise":
             SENSOR2CHECK = 0
         else:
             SENSOR2CHECK = 6
+        if ROTATION_DIR == 'clockwise':
+            await robot.turn_left(angle )
+        else:
+            await robot.turn_right(angle)
 
 
 # === FOLLOW OBSTACLE
 async def followObstacle(robot):
-    global ROTATION_DIR, SPEED, HAS_FOUND_OBSTACLE, HAS_REALIGNED
+    global ROTATION_DIR, SPEED, HAS_FOUND_OBSTACLE, HAS_REALIGNED, SENSOR2CHECK
+    print('following obstacle')
+    #TURN THE ROBOT
+
     await robot.set_wheel_speeds(SPEED,SPEED)
     readings = (await robot.get_ir_proximity()).sensors
     sidesens = readings[SENSOR2CHECK]
+    
     sidedist = 4095 / (sidesens + 1)
+    print(sidedist)
     if sidedist > 100:
         HAS_FOUND_OBSTACLE = False
         HAS_REALIGNED = False
-        await robot.move(5) # figure out this distance
+        await robot.move(16) # figure out this distance
     elif sidedist <= 5 or sidedist > 10:
         await robot.set_wheel_speeds(0,0)
         if ROTATION_DIR == "clockwise":
@@ -183,8 +200,9 @@ async def makeDelivery(robot):
 
     while not HAS_ARRIVED and not HAS_COLLIDED:
         print('hi')
-        while not HAS_REALIGNED and not HAS_COLLIDED:
-            await realignRobot(robot)
+        await realignRobot(robot)
+        while HAS_REALIGNED and not HAS_COLLIDED:
+            
             while not HAS_FOUND_OBSTACLE and not HAS_COLLIDED and not HAS_ARRIVED:
                 await moveTowardGoal(robot)
             while HAS_FOUND_OBSTACLE and not HAS_COLLIDED and not HAS_ARRIVED:
