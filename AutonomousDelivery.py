@@ -7,7 +7,7 @@ from irobot_edu_sdk.music import Note
 import math as m
 from math import sqrt
 # robot is the instance of the robot that will allow us to call its methods and to define events with the @event decorator.
-name = ""
+name = "EVE"
 robot = Create3(Bluetooth(name))  # Will connect to the first robot found.
 
 
@@ -16,11 +16,11 @@ HAS_REALIGNED = False
 HAS_FOUND_OBSTACLE = False
 SENSOR2CHECK = 0
 HAS_ARRIVED = False
-DESTINATION = (0, 120)
+DESTINATION = (0, 20)
 ARRIVAL_THRESHOLD = 5
 IR_ANGLES = [-65.3, -38.0, -20.0, -3.0, 14.25, 34.0, 65.3]
 ROTATION_DIR = 0
-SPEED = 5
+SPEED = 10
 
 # Implementation for fail-safe robots
 # EITHER BUTTON
@@ -28,6 +28,8 @@ SPEED = 5
 async def when_either_touched(robot):
     global HAS_COLLIDED
     HAS_COLLIDED = True
+    await robot.set_wheel_speeds(0,0)
+    await robot.set_lights_rgb(255,0,0)
     
 
 # EITHER BUMPER
@@ -35,6 +37,8 @@ async def when_either_touched(robot):
 async def when_either_bumped(robot):
     global HAS_COLLIDED
     HAS_COLLIDED = True
+    await robot.set_wheel_speeds(0,0)
+    await robot.set_lights_rgb(255,0,0)
 
 # ==========================================================
 
@@ -102,21 +106,34 @@ def movementDirection(readings):
 
 # === REALIGNMENT BEHAVIOR
 async def realignRobot(robot):
-    global HAS_REALIGNED
-    headings = (await robot.get_ir_proximity()).sensors
+    
+    global HAS_REALIGNED, DESTINATION
+    await robot.set_wheel_speeds(0,0)
+    current_position = await robot.get_position()
+    headings = current_position.heading
+    pos = current_position.x, current_position.y
     theta = getCorrectionAngle(headings)
-    destAngle = getAngleToDestination(theta)
+    await robot.turn_right(theta)
+    destAngle = getAngleToDestination(pos, DESTINATION)
+    print(theta, destAngle)
     await robot.turn_right(destAngle)
     HAS_REALIGNED = True
+    await robot.set_wheel_speeds(SPEED, SPEED)
 
     
 
 # === MOVE TO GOAL
 async def moveTowardGoal(robot):
-    global HAS_FOUND_OBSTACLE, SENSOR2CHECK, SPEED, HAS_REALIGNED
-    robot.set_wheel_speeds(SPEED, SPEED)
+    global HAS_FOUND_OBSTACLE, SENSOR2CHECK, SPEED, HAS_REALIGNED, HAS_ARRIVED
+    await robot.set_wheel_speeds(SPEED, SPEED)
     readings = (await robot.get_ir_proximity()).sensors
     dist, angle =  getMinProxApproachAngle(readings)
+    current_position = await robot.get_position()
+    pos = current_position.x, current_position.y
+    if checkPositionArrived(pos, DESTINATION, ARRIVAL_THRESHOLD):
+            HAS_ARRIVED = True
+            print('arrived')
+    print(current_position.x, current_position.y)
     if dist < 20:
         await robot.set_wheel_speeds(0,0)
         await robot.turn_right(angle)
@@ -164,18 +181,22 @@ async def makeDelivery(robot):
     global HAS_ARRIVED, HAS_COLLIDED, HAS_REALIGNED
     global DESTINATION
 
-    while not HAS_ARRIVED:
-        while not HAS_REALIGNED:
-            realignRobot(robot)
-            while not HAS_FOUND_OBSTACLE:
+    while not HAS_ARRIVED and not HAS_COLLIDED:
+        print('hi')
+        while not HAS_REALIGNED and not HAS_COLLIDED:
+            await realignRobot(robot)
+            while not HAS_FOUND_OBSTACLE and not HAS_COLLIDED and not HAS_ARRIVED:
                 await moveTowardGoal(robot)
-            while HAS_FOUND_OBSTACLE:
+            while HAS_FOUND_OBSTACLE and not HAS_COLLIDED and not HAS_ARRIVED:
                 await followObstacle(robot)
 
         current_position = await robot.get_position()
         pos = current_position.x, current_position.y
         if checkPositionArrived(pos, DESTINATION, ARRIVAL_THRESHOLD):
             HAS_ARRIVED = True
+            await robot.set_wheel_speeds(0,0)
+            await robot.set_lights_rgb(0,255,0)
+            print('arrived')
 
 
 # start the robot

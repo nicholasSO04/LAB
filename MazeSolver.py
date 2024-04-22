@@ -50,7 +50,7 @@ def createMazeDict(i, j, size):
             dict1[(x,y)] = {'position' : (x * size, y * size), 'neighbors': [], 'visited': False, 'cost': 0}
     return dict1
 
-def addAllNeighbors(mazedict):
+def addAllNeighbors(mazedict, a, b):
     for key in mazedict:
         x, y = key
         if (x-1, y) in mazedict:

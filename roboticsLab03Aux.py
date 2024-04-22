@@ -41,7 +41,7 @@ def getAngleToDestination(currentPosition, destination):
     return int(correctAngle)
 
 
-
+print(getAngleToDestination((1, 1), (5, 3)))
 
 def checkPositionArrived(currentPosition, destination, threshold):
     x1, y1 = currentPosition
